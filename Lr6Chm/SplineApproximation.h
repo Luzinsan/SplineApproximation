@@ -11,6 +11,8 @@
 #include "PolStr.h"
 #include "Polynomial.h"
 
+#define EPS 1e-7
+
 namespace luMath
 {
     std::streambuf* redirectInput(std::ifstream* fin = NULL);
@@ -186,7 +188,11 @@ namespace luMath
                 _y0 = Vector<T>(_n + 1, false);
                 for (unsigned i = 0; i <= _n; i++)
                     std::cin >> _y0[i];
-                std::cin >> _s >> _0 >> _i >>_m;
+                if (_k == 3)
+                    std::cin >> _s;
+                if (_k == 2 || _k == 3)
+                    std::cin >> _0 >> _i;
+                std::cin >> _m;
                 _res_x = Vector<T>(_m + 1, false);
                 for (unsigned i = 0; i <= _m; i++)
                     std::cin >> _res_x[i];
@@ -209,7 +215,7 @@ namespace luMath
             if (_f) { delete[] _f; _f = NULL; }
         }
 
-        // возвратить порядок полинома
+        // возвратить порядок сплайна
         unsigned getSplOrd() const { return _k; } 
         // возвратить количество сплайнов
         unsigned getCountSpl() const { return _n; }
@@ -221,47 +227,43 @@ namespace luMath
         unsigned getCountRes() const { return _m; }
         const Vector<T>& getResultGrid() const { return _res_x; }
         char* getOrigAnalytic() const { return _f; }
+        const Vector<Polynomial<T>>& getSplines() const { return _splines; }
 
-
-        const Vector<Polynomial<T>>& getSplines(unsigned ord)
+        const Vector<Polynomial<T>>& composeSplines(unsigned ord)
         {
             switch (ord)
             {
             case 1: // линейные сплайны
-                std::cout << "\n\tOrder: 1.\n";
                 _splines = SplineFirstOrd(_x0, _y0);
                 break;
             case 2: // параболические сплайны
-            {   std::cout << "\n\tOrder: 2.\n";
+            {  
                 _splines = SplineSecondOrd(_x0, _y0, _0, _i);
                 break;
             }
             case 3: // кубические сплайны
-                std::cout << "\n\tOrder: 3.\n";
-                _splines = SplineThirdOrd(_x0, _y0, _s, _0, _i, _original_cout);
+                _splines = SplineThirdOrd(_x0, _y0, _s, _0, _i);
                 break;
             default: throw std::logic_error("Непредвиденный порядок сплайнов");
             }
             return  _splines;
         }
-
         private:
-            
+            // Сплайны первого порядка
             static Vector<Polynomial<T>> SplineFirstOrd(const Vector<T>& x, const Vector<T>& y)
             {
                 size_t n = x.getLength() - 1;
                 Vector<Polynomial<T>> Splines(n);
                 
                 for (int i = 0; i < n; i++)
-                {
                     Splines[i] = y[i]
                         + ((y[i + 1] - y[i])
                             / (x[i + 1] - x[i])
                             * Polynomial<T>({ -(T)x[i], 1 }));
-                    std::cout << "\nSpline #" << i << ":\t" << Splines[i];
-                }
                 return Splines;
             }
+
+            // Сплайны второго порядка 
             static Vector<Polynomial<T>> SplineSecondOrd(const Vector<T>& x, const Vector<T>& y, int index, T border)
             {
                 size_t n = static_cast<size_t>(x.getLength()) - 1;
@@ -280,18 +282,16 @@ namespace luMath
                         b[i] = 2 * (y[i + 1] - y[i]) / (x[i + 1] - x[i]) - b[i + 1];
                 }
                 for (int i = 0; i < (int)n; i++)
-                {
                     Splines[i] = y[i]
                         + (b[i] * Polynomial<T>({ -(T)x[i], 1 }))
                         + (((b[i + 1] - b[i])
                             / (2 * (x[i + 1] - x[i]))
                             * Polynomial<T>({ -(T)x[i], 1 }) * Polynomial<T>({ -(T)x[i], 1 })));
-                    std::cout << "\nSpline #" << i << ":\t" << Splines[i];
-                }
                 return Splines;
             }
 
-            static Vector<Polynomial<T>> SplineThirdOrd(const Vector<T>& x, const Vector<T>& y, char s, T left, T right, std::streambuf* out)
+            // Сплайны третьего порядка
+            static Vector<Polynomial<T>> SplineThirdOrd(const Vector<T>& x, const Vector<T>& y, char s, T left, T right)
             {
                 size_t n = x.getLength();
                 Vector<Polynomial<T>> Splines(n - 1);
@@ -334,7 +334,7 @@ namespace luMath
                         - (x[n - 1] - x[n - 2]) * right / 6;
                 }
                 
-                Vector<T> M = SweepMethod(A, g, out);
+                Vector<T> M = SweepMethod(A, g);
                 if (s == '2')
                 {
                     T* temp_array = new T[n];
@@ -346,7 +346,6 @@ namespace luMath
                 }
                
                 for (int i = 0; i < n - 1; i++)
-                {
                     Splines[i] = y[i]
                         + (((y[i + 1] - y[i]) / (x[i + 1] - x[i])
                             - (x[i + 1] - x[i]) / 6 * (2 * M[i] + M[i + 1])) 
@@ -355,22 +354,18 @@ namespace luMath
                             * Polynomial<T>({ -(T)x[i], 1 }) * Polynomial<T>({ -(T)x[i], 1 }))
                         + (((M[i + 1] - M[i]) / (6 * (x[i + 1] - x[i])) )
                             * Polynomial<T>({ -(T)x[i], 1 }) * Polynomial<T>({ -(T)x[i], 1 }) * Polynomial<T>({ -(T)x[i], 1 }));
-                    std::cout << "\nSpline #" << i << ":\t" << Splines[i];
-                }
                 return Splines;
             }
 
             // Решение Трёхдиагональной СЛАУ
-            static Vector<T> SweepMethod(Matrix<T> A, const Vector<T> b, std::streambuf* out)
+            static Vector<T> SweepMethod(Matrix<T> A, const Vector<T> b)
             {
                 size_t n = b.getLength();
                 Vector<T> x(n);
                 Vector<T> r(n);
                 r[0] = -A[0][1] / A[0][0];
-                
                 Vector<T> v(n);
                 v[0] = b[0] / A[0][0];
-                
                 // Прямой ход метода прогонки
                 for (int i = 1; i < n - 1; i++)
                 {
@@ -378,7 +373,6 @@ namespace luMath
                     v[i] = (b[i] - A[i][i - 1] * v[i - 1]) / (A[i][i] + A[i][i - 1] * r[i - 1]);
                 }
                 v[n - 1] = (b[n - 1] - A[n - 1][n - 2] * v[n - 2]) / (A[n - 1][n - 1] + A[n - 1][n - 2] * r[n - 2]);
-                
                 // Обратный ход метода прогонки
                 x[n - 1] = v[n - 1];
                 for (int i = n - 2; i >= 0; i--)
@@ -386,77 +380,64 @@ namespace luMath
                 return x;
             }
 
-        /*void checkSourceGrid()
+        void checkSourceGrid()
         {
             bool success = true;
-            for (unsigned i = 0; i <= _n; i++)
+            for (unsigned i = 0; i < _n; i++)
             {
-                std::cout << "\tP(" << _x0[(unsigned)i] << ") = " << pol(_x0[(unsigned)i]) << "\n";
-                if (abs(pol(_x0[(unsigned)i]) - _y0[i]) > EPS)
+                std::cout << "\tS_" << i << "(" << _x0[(unsigned)i] << ") = " << _splines[i](_x0[(unsigned)i]) << "\n";
+                if (abs(_splines[i](_x0[(unsigned)i]) - _y0[i]) > EPS)
                 {
                     success = false;
                     std::cout << "\t f(" << _x0[(unsigned)i] << ") = " << _y0[i]
-                        << "\n\tУсловие интерполяции не выполняется. Погрешность: " << abs(pol(_x0[(unsigned)i]) - _y0[i]) << "\n";
+                        << "\n\tЗначение сплайна в узле исходной сетки не совпадает с данным образом этого узла в исходной сетке. Погрешность: " << abs(_splines[i](_x0[(unsigned)i]) - _y0[i]) << "\n";
                 }
             }
-            
-            if (success) std::cout << "\n\tОбразы интерполяционной функции в узлах исходной сетки совпадают с образами исходной сетки, данными изначально."
-                << "\nУсловие интерполяции выполнено.";
+            std::cout << "\tS_" << _n - 1 << "(" << _x0[(unsigned)_n] << ") = " << _splines[_n - 1](_x0[(unsigned)_n]) << "\n";
+            if (abs(_splines[_n - 1](_x0[(unsigned)_n]) - _y0[_n]) > EPS)
+            {
+                success = false;
+                std::cout << "\t f(" << _x0[(unsigned)_n] << ") = " << _y0[_n]
+                    << "\n\tЗначение сплайна в узле исходной сетки не совпадает с данным образом этого узла в исходной сетке. Погрешность: " << abs(_splines[_n - 1](_x0[(unsigned)_n]) - _y0[_n]) << "\n";
+            }
+            if (success) std::cout << "\tОбразы сплайнов в узлах исходной сетки совпадают с образами исходной сетки, данными изначально.";
         }
 
-        void checkResGrid(Polynomial<T> pol)
+        void checkResGrid()
         {
             for (unsigned i = 0; i <= _m; i++)
-            {
-                std::cout << "\tP(" << _res_x[(unsigned)i] << ") = " << pol(_res_x[(unsigned)i]) << "\n";
-                if (_f)
-                {
-                    T res_f = EvalPolStr(_f, _res_x[(unsigned)i], _k);
-                    std::cout << "\tf(" << _res_x[(unsigned)i] << ") = " << res_f
-                        << "\n\tПогрешность: " << abs(pol(_res_x[(unsigned)i]) - res_f) << "\n";
-                }
-            }
-        }*/
-        /*
+                for (unsigned j = 0; j <= _m; j++)
+                    if (_x0[j] <= _res_x[(unsigned)i] && _res_x[(unsigned)i] <= _x0[j + 1])
+                    {
+                        std::cout << "\tS_" << j << "(" << _res_x[(unsigned)i] << ") = " << _splines[j](_res_x[(unsigned)j]) << "\n";
+                        if (_f)
+                        {
+                            T res_f = EvalPolStr(_f, _res_x[(unsigned)i], 0);
+                            std::cout << "\tf(" << _res_x[(unsigned)i] << ") = " << res_f
+                                << "\n\tПогрешность: " << abs(_splines[j](_res_x[(unsigned)j]) - res_f) << "\n";
+                        }
+                    }
+        }
+        
         friend std::ostream& operator<<(std::ostream& out, SplineApproximation& data)
         {
+            std::cout << "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||\n";
             std::streamsize precision = std::cout.precision();
             std::streamsize size = std::cout.width();
             std::cout << std::setprecision(precision);
-
-            out << "\n\tЗаданный порядок полинома составляемой интерполяционной функции: " << data.getPolOrder()
-                << "\n\tТип исходной сетки: ";
-            if (data.getGridType() == 'u')
-                out << "равномерная сетка.\n";
-            else out << "неравномерная сетка.\n";
-            out << "Прообразы сетки: " << "\t\t\t\t\t\t" << std::setw(size) << data.getSourceGrid()
+            out << "\n\tЗаданный порядок сплайнов, интерполлирующих функцию: " << data.getSplOrd() << "\n"
+                << "Прообразы сетки: " << "\t\t\t\t\t\t" << std::setw(size) << data.getSourceGrid()
                 << "Соответствующие заданные образы сетки: " << "\t" << std::setw(size) << data.getValueGrid()
-                << "Требуемый порядок производной интерполирующей функции: " << data.getDerivative();
-
-            switch (data.getMethod())
-            {
-            case '1':
-                out << "\nПолином Ньютона с " << data.getDerivative() << " порядком производной:\t"
-                    << std::setw(size) << data.getNewtonInterPol(data.getDerivative())
-                    << "\nСверка значений интерполирующей функции с заданными образами сетки в исходных узлах: \n";
-                data.checkSourceGrid(data.getNewtonInterPol(0));
-                out << "\nПроверка значений интерполипующей функции требуемого порядка производной в результирующей сетке:\n";
-                data.checkResGrid(data.getNewtonInterPol(data.getDerivative()));
-
-                break;
-            case '2':
-                out << "\nПолином Лагранжа с " << data.getDerivative() << " порядком производной:\t"
-                    << std::setw(size) << data.getLagrangeInterPol(data.getDerivative())
-                    << "\nСверка значений интерполирующей функции с заданными образами сетки в исходных узлах: \n";
-                data.checkSourceGrid(data.getLagrangeInterPol(0));
-                out << "\nПроверка значений интерполипующей функции требуемого порядка производной в результирующей сетке:\n";
-                data.checkResGrid(data.getLagrangeInterPol(data.getDerivative()));
-                break;
-            }
+                << "\nСплайны порядка " << data.getSplOrd() << ":";
+            for (int i = 0; i < data.getCountSpl(); i++)
+                out << "\n\tSpline #"<<i << ": " << data.getSplines()[i];
+            out << "\nСверка значений сплайнов с заданными образами сетки в исходных узлах: \n";
+            data.checkSourceGrid();
+            out << "\nПроверка значений сплайнов требуемого порядка в результирующей сетке:\n";
+            data.checkResGrid();
+            std::cout << "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||\n";
             return out;
         }
-        */
-    
     };
 
     std::streambuf* redirectInput(std::ifstream* in)
@@ -571,5 +552,4 @@ namespace luMath
         return array;
     }
 }
-
 #endif
