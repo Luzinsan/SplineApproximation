@@ -22,6 +22,7 @@ int main()
         SplineApproximation<double> data;
         std::ifstream* fin = data.setInputDevice(choice);
         data.inputData(fin);
+        data.getSplines(data.getSplOrd());
         //std::cout << std::setprecision(5) << std::setw(10) << data;
     } while (choice);
     system("pause");

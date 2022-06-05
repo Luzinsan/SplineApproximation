@@ -8,6 +8,7 @@
 #include <iomanip>
 #include "Vector.h"
 #include "PolStr.h"
+#include "Polynomial.h"
 
 namespace luMath
 {
@@ -46,7 +47,8 @@ namespace luMath
         char _t;          // символ, сообщающий, известно или нет аналитическое выражение дл€ функции f(x)
                           // (y - аналитическое выражение известно,
                           //  n - аналитическое выражение неизвестно);
-        char* _f;   // аналитическое выражение дл€ функции (если оно известно).
+        char* _f;         // аналитическое выражение дл€ функции (если оно известно).
+        Vector<Polynomial<T>> _splines;
     public:
         SplineApproximation()
             : _original_cin{ std::cin.rdbuf() }, _original_cout{ std::cout.rdbuf() },
@@ -201,6 +203,78 @@ namespace luMath
         unsigned getCountRes() const { return _m; }
         const Vector<T>& getResultGrid() const { return _res_x; }
         char* getOrigAnalytic() const { return _f; }
+
+
+        Vector<Polynomial<T>> getSplines(unsigned ord)
+        {
+            _splines = Vector<Polynomial<T>>(_n);
+            switch (ord)
+            {
+            case 1: // линейные сплайны
+                for (int i = 0; i < (int)_n; i++)
+                    _splines[i] = _y0[i] + (_y0[i + 1] - _y0[i]) / (_x0[i + 1] - _x0[i]) * Polynomial<T>({ -(T)_x0[i], 1 });
+                break;
+            case 2: // параболические сплайны
+                //for (int i = 0; i <= (int)_n; i++)
+                    //SplineSecondOrd(Splines[i]);
+                break;
+            case 3: // кубические сплайны
+                //for (int i = 0; i <= (int)_n; i++)
+                    //SplineThirdOrd(Splines[i]);
+                break;
+            default: throw std::logic_error("Ќепредвиденный пор€док сплайнов");
+            }
+            return  Splines;
+        }
+
+        private:
+            
+           
+            /*const Polynomial<T>& SplineSecondOrd(Polynomial<T>& spline)
+            {
+                Polynomial<T> P;
+                for (int i = 0; i <= (int)_n; i++)
+                {
+                    Polynomial<T> mult((T)1);
+                    for (int j = 0; j <= i - 1; j++)
+                    {
+                        if (_s == 'u')
+                            mult *= Polynomial<T>({ -(T)j, 1 });
+                        else
+                            mult *= Polynomial<T>({ -_x0[j], 1 });
+
+                    }
+                    if (_s == 'u')
+                        P += dividedDifferences[i][0] * mult / factorial(i);
+                    else
+                        P += dividedDifferences[i][0] * mult;
+                }
+                return P;
+            }
+            
+            const Polynomial<T>& SplineThirdOrd(Polynomial<T>& spline)
+            {
+                Polynomial<T> P;
+                for (int i = 0; i <= (int)_n; i++)
+                {
+                    Polynomial<T> mult((T)1);
+                    for (int j = 0; j <= i - 1; j++)
+                    {
+                        if (_s == 'u')
+                            mult *= Polynomial<T>({ -(T)j, 1 });
+                        else
+                            mult *= Polynomial<T>({ -_x0[j], 1 });
+
+                    }
+                    if (_s == 'u')
+                        P += dividedDifferences[i][0] * mult / factorial(i);
+                    else
+                        P += dividedDifferences[i][0] * mult;
+                }
+                return P;
+            }*/
+
+
         /*void checkSourceGrid()
         {
             bool success = true;
