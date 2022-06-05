@@ -18,7 +18,7 @@ namespace luMath
 			: m_id{ s_idCounter++ }, m_length{ length }
 		{
 			if (m_length < 0)
-				throw  std::invalid_argument("Степень полинома отрицательна.");
+				throw  std::invalid_argument("РЎС‚РµРїРµРЅСЊ РїРѕР»РёРЅРѕРјР° РѕС‚СЂРёС†Р°С‚РµР»СЊРЅР°.");
 
 			m_coeff = new T[m_length];
 			if (coeff)
@@ -147,7 +147,7 @@ namespace luMath
 		const Polynomial& operator/=(const Polynomial<T>& polynomial)
 		{
 			if (polynomial.m_coeff[polynomial.m_length - 1] == 0)
-				throw std::logic_error("Деление на ноль\n");
+				throw std::logic_error("Р”РµР»РµРЅРёРµ РЅР° РЅРѕР»СЊ\n");
 
 			int new_power = getPower() - polynomial.getPower();
 			if (new_power < 0) return *this = 0.0;
@@ -172,7 +172,7 @@ namespace luMath
 		{
 			if (!polynomial.getPower() && 
 				 polynomial.m_coeff[polynomial.m_length - 1] == 0)
-				throw std::logic_error("Деление на ноль\n");
+				throw std::logic_error("Р”РµР»РµРЅРёРµ РЅР° РЅРѕР»СЊ\n");
 
 			int new_power = getPower() - polynomial.getPower();
 
@@ -239,7 +239,7 @@ namespace luMath
 		T& operator[](int index)
 		{
 			if (index >= static_cast<int>(m_length) || static_cast<int>(m_length) + index < 0)
-				throw std::invalid_argument("Индекс члена полинома больше количества членов");
+				throw std::invalid_argument("РРЅРґРµРєСЃ С‡Р»РµРЅР° РїРѕР»РёРЅРѕРјР° Р±РѕР»СЊС€Рµ РєРѕР»РёС‡РµСЃС‚РІР° С‡Р»РµРЅРѕРІ");
 			else if (index < 0)
 				index += m_length;
 			return m_coeff[index];
@@ -247,7 +247,7 @@ namespace luMath
 		const T& operator[](int index) const
 		{
 			if (index >= static_cast<int>(m_length) || static_cast<int>(m_length) + index < 0)
-				throw std::invalid_argument("Индекс члена полинома больше количества членов");
+				throw std::invalid_argument("РРЅРґРµРєСЃ С‡Р»РµРЅР° РїРѕР»РёРЅРѕРјР° Р±РѕР»СЊС€Рµ РєРѕР»РёС‡РµСЃС‚РІР° С‡Р»РµРЅРѕРІ");
 			else if (index < 0)
 				index += m_length;
 			return m_coeff[index];

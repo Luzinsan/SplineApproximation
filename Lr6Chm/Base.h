@@ -23,7 +23,7 @@ namespace luMath
 			: Base<T>()
 		{
 			m_item = (rows <= 0 || cols <= 0)
-				? throw std::length_error("Неудовлетворительная размерность объекта №" + std::to_string(m_id) + '\n')
+				? throw std::length_error("РќРµСѓРґРѕРІР»РµС‚РІРѕСЂРёС‚РµР»СЊРЅР°СЏ СЂР°Р·РјРµСЂРЅРѕСЃС‚СЊ РѕР±СЉРµРєС‚Р° в„–" + std::to_string(m_id) + '\n')
 				: new T[rows * cols];
 			m_rows = rows;
 			m_cols = cols;
@@ -49,7 +49,7 @@ namespace luMath
 				if (new_size - static_cast<int>(new_size) == 0)
 					*this = std::move(Base<T>(static_cast<int>(new_size), static_cast<int>(new_size)));
 				else
-					throw std::length_error("Неудовлетворительная размерность объекта\n");
+					throw std::length_error("РќРµСѓРґРѕРІР»РµС‚РІРѕСЂРёС‚РµР»СЊРЅР°СЏ СЂР°Р·РјРµСЂРЅРѕСЃС‚СЊ РѕР±СЉРµРєС‚Р°\n");
 			}
 			unsigned count = 0;
 			for (auto& element : list)
@@ -172,7 +172,7 @@ namespace luMath
 		const Base<T>& operator+=(const Base<T>& base)
 		{
 			if (!canAdd(*this, base))
-				throw std::logic_error("\nОперация сложения невозможна с объектами: id:" + std::to_string(m_id)
+				throw std::logic_error("\nРћРїРµСЂР°С†РёСЏ СЃР»РѕР¶РµРЅРёСЏ РЅРµРІРѕР·РјРѕР¶РЅР° СЃ РѕР±СЉРµРєС‚Р°РјРё: id:" + std::to_string(m_id)
 					+ "; id:" + std::to_string(base.m_id));
 
 			for (unsigned iii = 0; iii < m_rows * m_cols; ++iii)
@@ -184,7 +184,7 @@ namespace luMath
 		const Base<T>& operator-=(const Base<T>& base)
 		{
 			if (!canAdd(*this, base))
-				throw std::logic_error("\nОперация разности невозможна с объектами: id:" + std::to_string(m_id)
+				throw std::logic_error("\nРћРїРµСЂР°С†РёСЏ СЂР°Р·РЅРѕСЃС‚Рё РЅРµРІРѕР·РјРѕР¶РЅР° СЃ РѕР±СЉРµРєС‚Р°РјРё: id:" + std::to_string(m_id)
 					+ "; id:" + std::to_string(base.m_id));
 
 			for (unsigned iii = 0; iii < m_rows * m_cols; ++iii)
@@ -196,7 +196,7 @@ namespace luMath
 		const Base<T>& operator%=(const Base<T>& base)
 		{
 			if (!canAdd(*this, base))
-				throw std::logic_error("\nОперация взятия остатка от деления по каждому элементу невозможна с объектами: id:" + std::to_string(m_id)
+				throw std::logic_error("\nРћРїРµСЂР°С†РёСЏ РІР·СЏС‚РёСЏ РѕСЃС‚Р°С‚РєР° РѕС‚ РґРµР»РµРЅРёСЏ РїРѕ РєР°Р¶РґРѕРјСѓ СЌР»РµРјРµРЅС‚Сѓ РЅРµРІРѕР·РјРѕР¶РЅР° СЃ РѕР±СЉРµРєС‚Р°РјРё: id:" + std::to_string(m_id)
 					+ "; id:" + std::to_string(base.m_id));
 
 			for (unsigned iii = 0; iii < m_rows * m_cols; ++iii)
@@ -208,7 +208,7 @@ namespace luMath
 		const Base<T>& operator*=(const Base<T>& base)
 		{
 			if (!(canMltpl(*this, base)))
-				throw std::logic_error("\nОперация умножения невозможна с объектами: id:" + std::to_string(m_id)
+				throw std::logic_error("\nРћРїРµСЂР°С†РёСЏ СѓРјРЅРѕР¶РµРЅРёСЏ РЅРµРІРѕР·РјРѕР¶РЅР° СЃ РѕР±СЉРµРєС‚Р°РјРё: id:" + std::to_string(m_id)
 					+ "; id:" + std::to_string(base.m_id));
 
 			T temp = 0;
@@ -315,7 +315,7 @@ namespace luMath
 			: Base <std::string> ()
 		{
 			m_item = (rows <= 0 || cols <= 0)
-				? throw std::length_error("Неудовлетворительная размерность объекта №" + std::to_string(m_id) + '\n')
+				? throw std::length_error("РќРµСѓРґРѕРІР»РµС‚РІРѕСЂРёС‚РµР»СЊРЅР°СЏ СЂР°Р·РјРµСЂРЅРѕСЃС‚СЊ РѕР±СЉРµРєС‚Р° в„–" + std::to_string(m_id) + '\n')
 				: new std::string[rows * cols];
 			m_rows = rows;
 			m_cols = cols;
@@ -338,7 +338,7 @@ namespace luMath
 				if (new_size - static_cast<int>(new_size) == 0)
 					*this = std::move(Base<std::string>(static_cast<int>(new_size), static_cast<int>(new_size)));
 				else
-					throw std::length_error("Неудовлетворительная размерность объекта\n");
+					throw std::length_error("РќРµСѓРґРѕРІР»РµС‚РІРѕСЂРёС‚РµР»СЊРЅР°СЏ СЂР°Р·РјРµСЂРЅРѕСЃС‚СЊ РѕР±СЉРµРєС‚Р°\n");
 			}
 			unsigned count = 0;
 			for (auto& element : list)
