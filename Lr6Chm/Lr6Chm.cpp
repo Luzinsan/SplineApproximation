@@ -1,20 +1,28 @@
-﻿// Lr6Chm.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
+﻿#include <iostream>
+#include "SplineApproximation.h"
 
-#include <iostream>
+using namespace luMath;
 
 int main()
 {
-    std::cout << "Hello World!\n";
+    system("chcp 1251 > null");
+    char choice;
+    do {
+        system("pause");
+        system("cls");
+        choice = getSymbol({ '1','2','3','4','5','6'},
+            "Введите способ ввода данных:"
+            "\n1) с клавиатуры"
+            "\n2) из файла, заданного пользователем"
+            "\n3) стандартный c линейным сплайном       (из файла input_order_1.txt)"
+            "\n4) стандартный с параболическим сплайном (из файла input_order_2.txt)"
+            "\n5) стандартный с кубическим сплайном     (из файла input_order_3.txt)"
+            "\n6) завершить программу\n-> ");
+        if (choice == '6') break;
+        SplineApproximation<double> data;
+        std::ifstream* fin = data.setInputDevice(choice);
+        data.inputData(fin);
+        //std::cout << std::setprecision(5) << std::setw(10) << data;
+    } while (choice);
+    system("pause");
 }
-
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
