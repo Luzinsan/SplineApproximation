@@ -141,6 +141,18 @@
   <ItemGroup>
     <ClCompile Include="Lr6Chm.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="GUIDE.txt" />
+    <Text Include="input_order_1.txt" />
+    <Text Include="input_order_2.txt" />
+    <Text Include="input_order_3.txt" />
+    <Text Include="output.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="PolStr.h" />
+    <ClInclude Include="SplineApproximation.h" />
+    <ClInclude Include="Vector.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
