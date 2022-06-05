@@ -40,6 +40,9 @@ namespace luMath
         unsigned _n;   // количество сплайнов;
         Vector<T> _x0; // узлы сетки;
         Vector<T> _y0; // значения функции в узлах сетки;
+        char _s;          // цифра, обозначающая, какого порядка производной будут даны граничащие значения
+                          // (1 - производные первого порядка,
+                          //  2 - производные второго порядка);
         T _0, _i;      // граничные условия  (для _k=2,3)
         unsigned _m;   // количество интервалов в результирующей сетке
                        // (т.е.количество узлов – m + 1,
@@ -126,6 +129,7 @@ namespace luMath
                 _res_x =  getGridX(_res_x, _m + 1,
                         "\n\tВведите значения узлов результирующей интерполяционной сетки:\n",
                         "\n\t\t\tЗначения узлов должны идти строго по возрастанию. Введите другое значение.\n");
+                
                 if (_k == 2)
                 {
                     _0 = static_cast<unsigned>(getDouble(0, INT_MAX, "\n\tВведите индекс граничного условия:\n-> "));
@@ -133,6 +137,9 @@ namespace luMath
                 }
                 else if (_k == 3) 
                 {
+                    _s = getSymbol({ '1', '2' }, "\n\tКакого порядка производной будут даны граничащие значения:"
+                        "\n\t1 - производные первого порядка;"
+                        "\n\t2 - производные второго порядка\n-> ");
                     _0 = static_cast<unsigned>(getDouble(0, INT_MAX, "\n\tВведите первое граничное условие:\n-> "));
                     _i = static_cast<unsigned>(getDouble(0, DBL_MAX, "\n\tВведите второе граничное условие:\n-> "));
                 }
@@ -179,7 +186,7 @@ namespace luMath
                 _y0 = Vector<T>(_n + 1, false);
                 for (unsigned i = 0; i <= _n; i++)
                     std::cin >> _y0[i];
-                std::cin >> _0 >> _i >>_m;
+                std::cin >> _s >> _0 >> _i >>_m;
                 _res_x = Vector<T>(_m + 1, false);
                 for (unsigned i = 0; i <= _m; i++)
                     std::cin >> _res_x[i];
@@ -231,7 +238,7 @@ namespace luMath
             }
             case 3: // кубические сплайны
                 std::cout << "\n\tOrder: 3.\n";
-                _splines = SplineThirdOrd(_x0, _y0, _0, _i, _original_cout);
+                _splines = SplineThirdOrd(_x0, _y0, _s, _0, _i, _original_cout);
                 break;
             default: throw std::logic_error("Непредвиденный порядок сплайнов");
             }
@@ -257,7 +264,7 @@ namespace luMath
             }
             static Vector<Polynomial<T>> SplineSecondOrd(const Vector<T>& x, const Vector<T>& y, int index, T border)
             {
-                size_t n = x.getLength() - 1;
+                size_t n = static_cast<size_t>(x.getLength()) - 1;
                 Vector<Polynomial<T>> Splines(n);
                 Vector<T> b(n + 1);
                 if (index == 0)
@@ -284,27 +291,60 @@ namespace luMath
                 return Splines;
             }
 
-            static Vector<Polynomial<T>> SplineThirdOrd(const Vector<T>& x, const Vector<T>& y, T left, T right, std::streambuf* out)
+            static Vector<Polynomial<T>> SplineThirdOrd(const Vector<T>& x, const Vector<T>& y, char s, T left, T right, std::streambuf* out)
             {
                 size_t n = x.getLength();
                 Vector<Polynomial<T>> Splines(n - 1);
-                Matrix<T> A(n);
-                A[0][0] = (x[1] - x[0]) / 3;
-
-                Vector<T> g(n);
-                g[0] = (y[1] - y[0]) / (x[1] - x[0]) - left;
-                for (int i = 1; i < n - 1; i++)
+                Matrix<T> A;
+                Vector<T> g;
+                if (s == '1') 
                 {
-                    A[i][i] = (x[i] - x[i - 1] + x[i + 1] - x[i]) / 3;
-                    A[i - 1][i] = A[i][i - 1] = (x[i] - x[i - 1] ) / 6;
-                    g[i] = (y[i + 1] - y[i]) / (x[i + 1] - x[i]) - (y[i] - y[i - 1]) / (x[i] - x[i - 1]);
-                }
-                A[n - 1][n - 1] = (x[n - 1] - x[n - 2]) / 3;
-                A[n - 2][n - 1] = A[n - 1][n - 2] = (x[n - 1] - x[n - 2]) / 6;
-                g[n - 1] = right - (y[n - 1] - y[n - 2]) / (x[n - 1] - x[n - 2]);
+                    A = Matrix<T>(n);
+                    A[0][0] = (x[1] - x[0]) / 3;
+                    g = Vector<T>(n);
+                    g[0] = (y[1] - y[0]) / (x[1] - x[0]) - left;
 
+                    for (int i = 1; i < n - 1; i++)
+                    {
+                        A[i][i] = (x[i] - x[i - 1] + x[i + 1] - x[i]) / 3;
+                        A[i - 1][i] = A[i][i - 1] = (x[i] - x[i - 1]) / 6;
+                        g[i] = (y[i + 1] - y[i]) / (x[i + 1] - x[i]) - (y[i] - y[i - 1]) / (x[i] - x[i - 1]);
+                    }
+                    A[n - 1][n - 1] = (x[n - 1] - x[n - 2]) / 3;
+                    A[n - 2][n - 1] = A[n - 1][n - 2] = (x[n - 1] - x[n - 2]) / 6;
+                    g[n - 1] = right - (y[n - 1] - y[n - 2]) / (x[n - 1] - x[n - 2]);
+                }
+                else 
+                {
+                    A = Matrix<T>(n - 2);
+                    g = Vector<T>(n - 2);
+                    g[0] = (y[2] - y[1]) / (x[2] - x[1]) - (y[1] - y[0]) / (x[1] - x[0]) - (x[1] - x[0]) * left / 6;
+                    
+                    for (int i = 0; i < n - 2; i++)
+                    {
+                        A[i][i] = (x[i + 1] - x[i] + x[i + 2] - x[i + 1]) / 3;
+                        if (i + 1 < n - 2)
+                            A[i + 1][i] = A[i][i + 1] = (x[i + 2] - x[i + 1]) / 6;
+                    }
+                    for (int i = 1; i < n - 3; i++)
+                        g[i] = (y[i + 1] - y[i]) / (x[i + 1] - x[i]) - (y[i] - y[i - 1]) / (x[i] - x[i - 1]);
+
+                    g[n - 3] = (y[n - 1] - y[n - 2]) / (x[n - 1] - x[n - 2]) 
+                        - (y[n - 2] - y[n - 3]) / (x[n - 2] - x[n - 3]) 
+                        - (x[n - 1] - x[n - 2]) * right / 6;
+                }
+                
                 Vector<T> M = SweepMethod(A, g, out);
-                std::cout << "\n\tM: " << M << "\n";
+                if (s == '2')
+                {
+                    T* temp_array = new T[n];
+                    temp_array[0] = left;
+                    for (int i = 1; i < n - 1; i++)
+                        temp_array[i] = M[i - 1];
+                    temp_array[n - 1] = right;
+                    M = Vector<T>(n, false, temp_array);
+                }
+               
                 for (int i = 0; i < n - 1; i++)
                 {
                     Splines[i] = y[i]
@@ -320,6 +360,7 @@ namespace luMath
                 return Splines;
             }
 
+            // Решение Трёхдиагональной СЛАУ
             static Vector<T> SweepMethod(Matrix<T> A, const Vector<T> b, std::streambuf* out)
             {
                 size_t n = b.getLength();
@@ -330,6 +371,7 @@ namespace luMath
                 Vector<T> v(n);
                 v[0] = b[0] / A[0][0];
                 
+                // Прямой ход метода прогонки
                 for (int i = 1; i < n - 1; i++)
                 {
                     r[i] = -A[i][i + 1] / ( A[i][i] + A[i][i - 1] * r[i - 1]);
@@ -337,7 +379,7 @@ namespace luMath
                 }
                 v[n - 1] = (b[n - 1] - A[n - 1][n - 2] * v[n - 2]) / (A[n - 1][n - 1] + A[n - 1][n - 2] * r[n - 2]);
                 
-                // Обратный ход
+                // Обратный ход метода прогонки
                 x[n - 1] = v[n - 1];
                 for (int i = n - 2; i >= 0; i--)
                     x[i] = r[i] * x[i + 1] + v[i];
