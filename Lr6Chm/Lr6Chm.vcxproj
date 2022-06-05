@@ -150,6 +150,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="PolStr.h" />
+    <ClInclude Include="Polynomial.h" />
     <ClInclude Include="SplineApproximation.h" />
     <ClInclude Include="Vector.h" />
   </ItemGroup>
