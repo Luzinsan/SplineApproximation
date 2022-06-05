@@ -6,6 +6,7 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include "Matrix.h"
 #include "Vector.h"
 #include "PolStr.h"
 #include "Polynomial.h"
@@ -92,7 +93,7 @@ namespace luMath
                 _original_cin = redirectInput(fin);
                 if (!_original_cin) return NULL;
 
-                fout = new std::ofstream("output.txt");
+                fout = new std::ofstream("output.txt", std::ios::app);
                 // сохраняем старый поток вывода и перенаправляем его на файл output.txt
                 _original_cout = redirectOutput(fout);
                 if (!_original_cout)  return NULL;
@@ -217,43 +218,20 @@ namespace luMath
 
         const Vector<Polynomial<T>>& getSplines(unsigned ord)
         {
-            _splines = Vector<Polynomial<T>>(_n);
             switch (ord)
             {
             case 1: // линейные сплайны
-                for (int i = 0; i < (int)_n; i++)
-                    _splines[i] = _y0[i] + (_y0[i + 1] - _y0[i]) / (_x0[i + 1] - _x0[i]) * Polynomial<T>({ -(T)_x0[i], 1 });
+                std::cout << "\n\tOrder: 1.\n";
+                _splines = SplineFirstOrd(_x0, _y0);
                 break;
             case 2: // параболические сплайны
-            {   
-                Vector<T> b(_n + 1);
-                if (_0 == 0)
-                {
-                    b[0] = _i;
-                    for (int i = 0; i < (int)_n; i++)
-                        b[i + 1] = 2 * (_y0[i + 1] - _y0[i]) / (_x0[i + 1] - _x0[i]) - b[i];
-                }
-                else
-                {
-                    b[_n] = _i;
-                    for (int i = _n - 1; i >= 0; i--)
-                        b[i] = 2 * (_y0[i + 1] - _y0[i]) / (_x0[i + 1] - _x0[i]) - b[i + 1];
-                }
-
-                for (int i = 0; i < (int)_n; i++)
-                {
-                    _splines[i] = _y0[i]
-                        + b[i] * Polynomial<T>({ -(T)_x0[i], 1 })
-                        + ((b[i + 1] - b[i])
-                            / (2 * (_x0[i + 1] - _x0[i]))
-                            * Polynomial<T>({ -(T)_x0[i], 1 }) * Polynomial<T>({ -(T)_x0[i], 1 }));
-                    std::cout << "\nSpline #" << i << ":\t" << _splines[i];
-                }
+            {   std::cout << "\n\tOrder: 2.\n";
+                _splines = SplineSecondOrd(_x0, _y0, _0, _i);
                 break;
             }
             case 3: // кубические сплайны
-                //for (int i = 0; i <= (int)_n; i++)
-                    //SplineThirdOrd(Splines[i]);
+                std::cout << "\n\tOrder: 3.\n";
+                _splines = SplineThirdOrd(_x0, _y0, _0, _i, _original_cout);
                 break;
             default: throw std::logic_error("Непредвиденный порядок сплайнов");
             }
@@ -262,51 +240,111 @@ namespace luMath
 
         private:
             
-           
-            /*const Polynomial<T>& SplineSecondOrd(Polynomial<T>& spline)
+            static Vector<Polynomial<T>> SplineFirstOrd(const Vector<T>& x, const Vector<T>& y)
             {
-                Polynomial<T> P;
-                for (int i = 0; i <= (int)_n; i++)
+                size_t n = x.getLength() - 1;
+                Vector<Polynomial<T>> Splines(n);
+                
+                for (int i = 0; i < n; i++)
                 {
-                    Polynomial<T> mult((T)1);
-                    for (int j = 0; j <= i - 1; j++)
-                    {
-                        if (_s == 'u')
-                            mult *= Polynomial<T>({ -(T)j, 1 });
-                        else
-                            mult *= Polynomial<T>({ -_x0[j], 1 });
-
-                    }
-                    if (_s == 'u')
-                        P += dividedDifferences[i][0] * mult / factorial(i);
-                    else
-                        P += dividedDifferences[i][0] * mult;
+                    Splines[i] = y[i]
+                        + ((y[i + 1] - y[i])
+                            / (x[i + 1] - x[i])
+                            * Polynomial<T>({ -(T)x[i], 1 }));
+                    std::cout << "\nSpline #" << i << ":\t" << Splines[i];
                 }
-                return P;
+                return Splines;
             }
-            
-            const Polynomial<T>& SplineThirdOrd(Polynomial<T>& spline)
+            static Vector<Polynomial<T>> SplineSecondOrd(const Vector<T>& x, const Vector<T>& y, int index, T border)
             {
-                Polynomial<T> P;
-                for (int i = 0; i <= (int)_n; i++)
+                size_t n = x.getLength() - 1;
+                Vector<Polynomial<T>> Splines(n);
+                Vector<T> b(n + 1);
+                if (index == 0)
                 {
-                    Polynomial<T> mult((T)1);
-                    for (int j = 0; j <= i - 1; j++)
-                    {
-                        if (_s == 'u')
-                            mult *= Polynomial<T>({ -(T)j, 1 });
-                        else
-                            mult *= Polynomial<T>({ -_x0[j], 1 });
-
-                    }
-                    if (_s == 'u')
-                        P += dividedDifferences[i][0] * mult / factorial(i);
-                    else
-                        P += dividedDifferences[i][0] * mult;
+                    b[0] = border;
+                    for (int i = 0; i < n; i++)
+                        b[i + 1] = 2 * (y[i + 1] - y[i]) / (x[i + 1] - x[i]) - b[i];
                 }
-                return P;
-            }*/
+                else
+                {
+                    b[n] = border;
+                    for (int i = n - 1; i >= 0; i--)
+                        b[i] = 2 * (y[i + 1] - y[i]) / (x[i + 1] - x[i]) - b[i + 1];
+                }
+                for (int i = 0; i < (int)n; i++)
+                {
+                    Splines[i] = y[i]
+                        + (b[i] * Polynomial<T>({ -(T)x[i], 1 }))
+                        + (((b[i + 1] - b[i])
+                            / (2 * (x[i + 1] - x[i]))
+                            * Polynomial<T>({ -(T)x[i], 1 }) * Polynomial<T>({ -(T)x[i], 1 })));
+                    std::cout << "\nSpline #" << i << ":\t" << Splines[i];
+                }
+                return Splines;
+            }
 
+            static Vector<Polynomial<T>> SplineThirdOrd(const Vector<T>& x, const Vector<T>& y, T left, T right, std::streambuf* out)
+            {
+                size_t n = x.getLength();
+                Vector<Polynomial<T>> Splines(n - 1);
+                Matrix<T> A(n);
+                A[0][0] = (x[1] - x[0]) / 3;
+
+                Vector<T> g(n);
+                g[0] = (y[1] - y[0]) / (x[1] - x[0]) - left;
+                for (int i = 1; i < n - 1; i++)
+                {
+                    A[i][i] = (x[i] - x[i - 1] + x[i + 1] - x[i]) / 3;
+                    A[i - 1][i] = A[i][i - 1] = (x[i] - x[i - 1] ) / 6;
+                    g[i] = (y[i + 1] - y[i]) / (x[i + 1] - x[i]) - (y[i] - y[i - 1]) / (x[i] - x[i - 1]);
+                }
+                A[n - 1][n - 1] = (x[n - 1] - x[n - 2]) / 3;
+                A[n - 2][n - 1] = A[n - 1][n - 2] = (x[n - 1] - x[n - 2]) / 6;
+                g[n - 1] = right - (y[n - 1] - y[n - 2]) / (x[n - 1] - x[n - 2]);
+
+               
+                
+                Vector<T> M = SweepMethod(A, g, out);
+                std::cout << "\n\tM: " << M << "\n";
+                for (int i = 0; i < n - 1; i++)
+                {
+                    Splines[i] = y[i]
+                        + ((y[i + 1] - y[i]) / (x[i + 1] - x[i])
+                            - (x[i + 1] - x[i]) * (2 * M[i] + M[i + 1]) / 6
+                            * Polynomial<T>({ -(T)x[i], 1 }))
+                        + (M[i] / 2
+                            * Polynomial<T>({ -(T)x[i], 1 }) * Polynomial<T>({ -(T)x[i], 1 }))
+                        + ((M[i + 1] - M[i]) / (x[i + 1] - x[i]) / 6
+                            * Polynomial<T>({ -(T)x[i], 1 }) * Polynomial<T>({ -(T)x[i], 1 }) * Polynomial<T>({ -(T)x[i], 1 }));
+                    std::cout << "\nSpline #" << i << ":\t" << Splines[i];
+                }
+                return Splines;
+            }
+
+            static Vector<T> SweepMethod(Matrix<T> A, const Vector<T> b, std::streambuf* out)
+            {
+                size_t n = b.getLength();
+                Vector<T> x(n);
+                Vector<T> r(n);
+                r[0] = -A[0][1] / A[0][0];
+                
+                Vector<T> v(n);
+                v[0] = b[0] / A[0][0];
+                
+                for (int i = 1; i < n - 1; i++)
+                {
+                    r[i] = -A[i][i + 1] / ( A[i][i] + A[i][i - 1] * r[i - 1]);
+                    v[i] = (b[i] - A[i][i - 1] * v[i - 1]) / (A[i][i] + A[i][i - 1] * r[i - 1]);
+                }
+                v[n - 1] = (b[n - 1] - A[n - 1][n - 2] * v[n - 2]) / (A[n - 1][n - 1] + A[n - 1][n - 2] * r[n - 2]);
+                
+                // Обратный ход
+                x[n - 1] = v[n - 1];
+                for (int i = n - 2; i >= 0; i--)
+                    x[i] = r[i] * x[i + 1] + v[i];
+                return x;
+            }
 
         /*void checkSourceGrid()
         {
