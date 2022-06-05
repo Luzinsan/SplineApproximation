@@ -1,0 +1,390 @@
+#ifndef SPLINE_APPROZIMATION_H
+#define SPLINE_APPROZIMATION_H
+#include <iostream>
+#include <fstream>
+#include <conio.h>
+#include <string>
+#include <sstream>
+#include <iomanip>
+#include "Vector.h"
+#include "PolStr.h"
+
+namespace luMath
+{
+    std::streambuf* redirectInput(std::ifstream* fin = NULL);
+    std::streambuf* redirectOutput(std::ofstream* fout = NULL);
+   
+    char getSymbol(std::initializer_list<char> list,
+        std::string notification_message = "",
+        std::string error_message = "Недопустимое значение, попробуйте ещё раз.\n-> ");
+    double getDouble(double min = -DBL_MAX,
+        double max = DBL_MAX,
+        std::string notification_message = "",
+        std::string error_message = "Недопустимое значение, попробуйте ещё раз.\n-> ");
+    template<class T>  Vector<T>& getGridX(Vector<T>& array, size_t size,
+        std::string notification_message = "",
+        std::string error_message = "Недопустимое значение, попробуйте ещё раз.");
+        
+    template<class T>
+    class SplineApproximation 
+    {
+    private:
+        std::streambuf* _original_cin;
+        std::streambuf* _original_cout;
+        unsigned _k;   //  порядок сплайна 
+                       // (1 – линейный, 
+                       //  2 – параболический,
+                       //  3 – кубический)
+        unsigned _n;   // количество сплайнов;
+        Vector<T> _x0; // узлы сетки;
+        Vector<T> _y0; // значения функции в узлах сетки;
+        T _0, _i;      // граничные условия  (для _k=2,3)
+        unsigned _m;   // количество интервалов в результирующей сетке
+                       // (т.е.количество узлов – m + 1,
+                       //  что сделано для унификации с узлами исходной сетки);
+        Vector<T> _res_x; // узлы результирующей сетки;
+        char _t;          // символ, сообщающий, известно или нет аналитическое выражение для функции f(x)
+                          // (y - аналитическое выражение известно,
+                          //  n - аналитическое выражение неизвестно);
+        char* _f;   // аналитическое выражение для функции (если оно известно).
+    public:
+        SplineApproximation()
+            : _original_cin{ std::cin.rdbuf() }, _original_cout{ std::cout.rdbuf() },
+            _k(1), _n(-1), _0(0), _i(0),
+            _x0(), _y0(), _m(0),
+            _res_x(), _t('n'), _f(NULL){}
+        // Установка потока ввода
+        std::ifstream* setInputDevice(char input_method)
+        {
+            std::ifstream* fin = NULL;
+            std::ofstream* fout = NULL;
+            switch (input_method)
+            {
+            case '1': return NULL;
+            case '2':
+            {
+                std::string filename;
+                std::cout << "\n\tВведите имя входного файла:\n-> ";
+                getline(std::cin, filename);
+                fin = new std::ifstream(filename);
+                // сохраняем старый поток ввода и перенаправляем его на пользовательский файл
+                _original_cin = redirectInput(fin);
+                if (!_original_cin)  return NULL;
+
+                std::cout << "\n\tВведите имя выходного файла:\n-> ";
+                getline(std::cin, filename);
+                fout = new std::ofstream(filename);
+                // сохраняем старый поток вывода и перенаправляем его на пользовательский файл
+                _original_cout = redirectOutput(fout);
+                if (!_original_cout)  return NULL;
+                break;
+            }
+            case '3': case '4': case '5':
+                if (input_method == '3')
+                    fin = new std::ifstream("input_order_1.txt");
+                else if (input_method == '4')
+                    fin = new std::ifstream("input_order_2.txt");
+                else
+                    fin = new std::ifstream("input_order_3.txt");
+                // сохраняем старый поток ввода и перенаправляем его на файл input_non-uniform_grid.txt 
+                _original_cin = redirectInput(fin);
+                if (!_original_cin) return NULL;
+
+                fout = new std::ofstream("output.txt");
+                // сохраняем старый поток вывода и перенаправляем его на файл output.txt
+                _original_cout = redirectOutput(fout);
+                if (!_original_cout)  return NULL;
+                break;
+            default:
+                throw std::invalid_argument("\n\t\tНет подходящего метода ввода данных...\n");
+            }
+            return fin;
+        }
+        // Считывание данных из текущего потока ввода
+        void inputData(std::ifstream* in)
+        {
+            if (!in)
+            {
+                _k = getSymbol({ '0','1','2' }, "\n\tВведите требуемый порядок сплайна:"
+                    "\n\t1 – линейный;"
+                    "\n\t2 – параболический;"
+                    "\n\t3 – кубический.\n-> ") - '0';
+                _n = static_cast<unsigned>(getDouble(0, INT_MAX, "\n\tВведите количество сплайнов:\n-> "));
+                _x0 = Vector<T>(_n + 1, false);
+                _x0 = getGridX(_x0, _n + 1,
+                        "\n\tВведите значения узлов интерполяционной сетки:\n",
+                        "\n\tЗначения узлов должны идти строго по возрастанию. Введите другое значение.");
+                std::cout << "\n\tВведите значения функции в узлах интерполяционной сетки:\n";
+                _y0 = Vector<T>(_n + 1, false);
+                for (unsigned i = 0; i <= _n; i++)
+                    _y0[i] = getDouble(-DBL_MAX, DBL_MAX, (std::stringstream() << "-> [" << _x0[i] << "]: ").str()); 
+                _m = static_cast<unsigned>(getDouble(0, INT_MAX, "\n\tВведите количество интервалов в результирующей сетке:\n-> "));
+                _res_x = Vector<T>(_m + 1, false);
+                _res_x =  getGridX(_res_x, _m + 1,
+                        "\n\tВведите значения узлов результирующей интерполяционной сетки:\n",
+                        "\n\t\t\tЗначения узлов должны идти строго по возрастанию. Введите другое значение.\n");
+                _t = getSymbol({ 'y', 'n' }, "\n\tИзвестно ли аналитическое выражение для функции f(x)?"
+                    "\n\ty – да;"
+                    "\n\tn – нет\n-> ");
+                if (_t == 'y')
+                {
+                    std::string F;
+                    char choice = 'y';
+                    while (choice == 'y')
+                    {
+                        std::cout << "\n\tВведите выражение для функции:\n-> ";
+                        getline(std::cin, F);
+                        if (!F.empty())
+                        {
+                            _f = CreatePolStr(F.c_str(), 0);
+                            if (GetError() != ERR_OK)
+                            {
+                                std::cerr << "\n\tДанное выражение не поддерживается.";
+                                choice = getSymbol({ 'y','n' }, "\n\tПопробовать ещё раз? (y/n)\n-> ");
+                            }
+                            else choice = 'n';
+                        }
+                        else
+                        {
+                            std::cerr << "\n\tНельзя обработать пустую строку.";
+                            choice = getSymbol({ 'y','n' }, "\n\tПопробовать ещё раз? (y/n)\n-> ");
+                        }
+                    }
+                }
+                if (in)
+                {
+                    std::cin.rdbuf(_original_cin); // сбрасываем поток до стандартного зарезервированного ввода
+                    in->close();
+                }
+            }
+            else
+            {
+                std::cin  >> _k >> _n;
+                _x0 = Vector<T>(_n + 1, false);
+                for (unsigned i = 0; i <= _n; i++)
+                    std::cin >> _x0[i];
+                _y0 = Vector<T>(_n + 1, false);
+                for (unsigned i = 0; i <= _n; i++)
+                    std::cin >> _y0[i];
+                std::cin >> _m;
+                _res_x = Vector<T>(_m + 1, false);
+                for (unsigned i = 0; i <= _m; i++)
+                    std::cin >> _res_x[i];
+                std::cin >> _t;
+                if (_t == 'y')
+                {
+                    std::cin.seekg(2, std::ios_base::cur);
+                    std::string F;
+                    getline(std::cin, F);
+                    _f = CreatePolStr(F.c_str(), 0);
+                    if (GetError() != ERR_OK)
+                        std::cout << "\n\tНекорректно задана аналитическая функция (или не подлежит обработке). \n";
+                }
+            }
+        }
+        ~SplineApproximation()
+        {
+            if (_original_cout)
+                std::cout.rdbuf(_original_cout); // сбрасываем до стандартного ввода с клавиатуры
+            if (_f) { delete[] _f; _f = NULL; }
+        }
+
+        // возвратить порядок полинома
+        unsigned getSplOrd() const { return _k; } 
+        // возвратить количество сплайнов
+        unsigned getCountSpl() const { return _n; }
+        // возвратить узлы исходной сетки
+        const Vector<T>& getSourceGrid() const { return _x0;}
+        // возвратить значения функции в узлах исходной сетки
+        const Vector<T>& getValueGrid() const { return _y0; }
+        // возвратить количество интервалов в результирующей сетке
+        unsigned getCountRes() const { return _m; }
+        const Vector<T>& getResultGrid() const { return _res_x; }
+        char* getOrigAnalytic() const { return _f; }
+        /*void checkSourceGrid()
+        {
+            bool success = true;
+            for (unsigned i = 0; i <= _n; i++)
+            {
+                std::cout << "\tP(" << _x0[(unsigned)i] << ") = " << pol(_x0[(unsigned)i]) << "\n";
+                if (abs(pol(_x0[(unsigned)i]) - _y0[i]) > EPS)
+                {
+                    success = false;
+                    std::cout << "\t f(" << _x0[(unsigned)i] << ") = " << _y0[i]
+                        << "\n\tУсловие интерполяции не выполняется. Погрешность: " << abs(pol(_x0[(unsigned)i]) - _y0[i]) << "\n";
+                }
+            }
+            
+            if (success) std::cout << "\n\tОбразы интерполяционной функции в узлах исходной сетки совпадают с образами исходной сетки, данными изначально."
+                << "\nУсловие интерполяции выполнено.";
+        }
+
+        void checkResGrid(Polynomial<T> pol)
+        {
+            for (unsigned i = 0; i <= _m; i++)
+            {
+                std::cout << "\tP(" << _res_x[(unsigned)i] << ") = " << pol(_res_x[(unsigned)i]) << "\n";
+                if (_f)
+                {
+                    T res_f = EvalPolStr(_f, _res_x[(unsigned)i], _k);
+                    std::cout << "\tf(" << _res_x[(unsigned)i] << ") = " << res_f
+                        << "\n\tПогрешность: " << abs(pol(_res_x[(unsigned)i]) - res_f) << "\n";
+                }
+            }
+        }*/
+        /*
+        friend std::ostream& operator<<(std::ostream& out, SplineApproximation& data)
+        {
+            std::streamsize precision = std::cout.precision();
+            std::streamsize size = std::cout.width();
+            std::cout << std::setprecision(precision);
+
+            out << "\n\tЗаданный порядок полинома составляемой интерполяционной функции: " << data.getPolOrder()
+                << "\n\tТип исходной сетки: ";
+            if (data.getGridType() == 'u')
+                out << "равномерная сетка.\n";
+            else out << "неравномерная сетка.\n";
+            out << "Прообразы сетки: " << "\t\t\t\t\t\t" << std::setw(size) << data.getSourceGrid()
+                << "Соответствующие заданные образы сетки: " << "\t" << std::setw(size) << data.getValueGrid()
+                << "Требуемый порядок производной интерполирующей функции: " << data.getDerivative();
+
+            switch (data.getMethod())
+            {
+            case '1':
+                out << "\nПолином Ньютона с " << data.getDerivative() << " порядком производной:\t"
+                    << std::setw(size) << data.getNewtonInterPol(data.getDerivative())
+                    << "\nСверка значений интерполирующей функции с заданными образами сетки в исходных узлах: \n";
+                data.checkSourceGrid(data.getNewtonInterPol(0));
+                out << "\nПроверка значений интерполипующей функции требуемого порядка производной в результирующей сетке:\n";
+                data.checkResGrid(data.getNewtonInterPol(data.getDerivative()));
+
+                break;
+            case '2':
+                out << "\nПолином Лагранжа с " << data.getDerivative() << " порядком производной:\t"
+                    << std::setw(size) << data.getLagrangeInterPol(data.getDerivative())
+                    << "\nСверка значений интерполирующей функции с заданными образами сетки в исходных узлах: \n";
+                data.checkSourceGrid(data.getLagrangeInterPol(0));
+                out << "\nПроверка значений интерполипующей функции требуемого порядка производной в результирующей сетке:\n";
+                data.checkResGrid(data.getLagrangeInterPol(data.getDerivative()));
+                break;
+            }
+            return out;
+        }
+        */
+    
+    };
+
+    std::streambuf* redirectInput(std::ifstream* in)
+    {
+        std::streambuf* original_cin = std::cin.rdbuf();
+        while (!*in)
+        {
+            std::string filename;
+            char choice;
+            choice = getSymbol({ '1', '2' },
+                "Данный файл не может быть открыт, либо не существует. Попробовать ещё раз?\n1) да\n2) выйти\n->");
+            if (choice == '1')
+            {
+                std::cout << "Введите имя файла:\n->";
+                getline(std::cin, filename);
+            }
+            else return NULL;
+            in->open(filename);
+        }
+        //перенаправляем стандартный поток ввода на переданный файл
+        std::cin.rdbuf(in->rdbuf());
+        return original_cin;
+    }
+
+    std::streambuf* redirectOutput(std::ofstream* out)
+    {
+        std::streambuf* original_cout = std::cout.rdbuf();
+        while (!*out)
+        {
+            std::string filename;
+            char choice;
+            choice = getSymbol({ '1', '2' },
+                "Данный файл не может быть открыт, либо не существует. Попробовать ещё раз?\n1) да\n2) выйти\n->");
+            if (choice == '1')
+            {
+                std::cout << "Введите имя файла:\n->";
+                getline(std::cin, filename);
+            }
+            else return NULL;
+            out->open(filename);
+        }
+        //перенаправляем стандартный поток вывода на переданный файл
+        std::cout.rdbuf(out->rdbuf());
+        return original_cout;
+    }
+
+
+    char getSymbol(std::initializer_list<char> list,
+        std::string notification_message,
+        std::string error_message)
+    {
+        char choice;
+        std::cout << notification_message;
+
+        bool flag = true;
+        do {
+            choice = _getche();
+            std::cout << std::endl;
+            for (auto it = list.begin(); it != list.end(); it++)
+                if (it[0] == choice) { flag = false; break; }
+
+            if (flag) std::cerr << error_message;
+        } while (flag);
+        return choice;
+    }
+
+    double getDouble(double min, double max,
+        std::string notification_message,
+        std::string error_message)
+    {
+        std::string epsstr;
+        double eps;
+        do {
+            std::cout << notification_message;
+            std::cin >> epsstr;
+
+            bool point = false, flag = false;
+            auto it = epsstr.begin();
+            if (it[0] == '-') it++;
+            for (; it != epsstr.end(); it++)
+                if (!isdigit(it[0]) && (it[0] != ',' || point))
+                {
+                    std::cout << error_message;
+                    flag = true;
+                    break;
+                }
+                else if (it[0] == ',' && !point) point = true;
+
+            if (flag) continue;
+            eps = std::stod(epsstr);
+            if (eps <= min || eps >= max)
+                std::cout << error_message;
+            else { std::cin.ignore(32256, '\n'); break; }
+        } while (true);
+        return eps;
+    }
+
+    template<class T> Vector<T>& getGridX(Vector<T>& array, size_t size,
+        std::string notification_message,
+        std::string error_message)
+    {
+        std::cout << notification_message;
+        int i = 0;
+        array[i] = getDouble(-DBL_MAX, DBL_MAX, (std::stringstream() << "-> [" << i << "]: ").str());
+        i++;
+        do
+        {
+            array[i] = getDouble(-DBL_MAX, DBL_MAX, (std::stringstream() << "-> [" << i << "]: ").str());
+            if (array[i] < array[i - 1]) std::cout << error_message;
+            else i++;
+        } while (i < size);
+        return array;
+    }
+}
+
+#endif
