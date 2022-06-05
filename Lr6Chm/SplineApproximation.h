@@ -303,19 +303,17 @@ namespace luMath
                 A[n - 2][n - 1] = A[n - 1][n - 2] = (x[n - 1] - x[n - 2]) / 6;
                 g[n - 1] = right - (y[n - 1] - y[n - 2]) / (x[n - 1] - x[n - 2]);
 
-               
-                
                 Vector<T> M = SweepMethod(A, g, out);
                 std::cout << "\n\tM: " << M << "\n";
                 for (int i = 0; i < n - 1; i++)
                 {
                     Splines[i] = y[i]
-                        + ((y[i + 1] - y[i]) / (x[i + 1] - x[i])
-                            - (x[i + 1] - x[i]) * (2 * M[i] + M[i + 1]) / 6
+                        + (((y[i + 1] - y[i]) / (x[i + 1] - x[i])
+                            - (x[i + 1] - x[i]) / 6 * (2 * M[i] + M[i + 1])) 
                             * Polynomial<T>({ -(T)x[i], 1 }))
-                        + (M[i] / 2
+                        + ((M[i] / 2)
                             * Polynomial<T>({ -(T)x[i], 1 }) * Polynomial<T>({ -(T)x[i], 1 }))
-                        + ((M[i + 1] - M[i]) / (x[i + 1] - x[i]) / 6
+                        + (((M[i + 1] - M[i]) / (6 * (x[i + 1] - x[i])) )
                             * Polynomial<T>({ -(T)x[i], 1 }) * Polynomial<T>({ -(T)x[i], 1 }) * Polynomial<T>({ -(T)x[i], 1 }));
                     std::cout << "\nSpline #" << i << ":\t" << Splines[i];
                 }
