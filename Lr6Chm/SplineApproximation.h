@@ -125,6 +125,16 @@ namespace luMath
                 _res_x =  getGridX(_res_x, _m + 1,
                         "\n\t¬ведите значени€ узлов результирующей интерпол€ционной сетки:\n",
                         "\n\t\t\t«начени€ узлов должны идти строго по возрастанию. ¬ведите другое значение.\n");
+                if (_k == 2)
+                {
+                    _0 = static_cast<unsigned>(getDouble(0, INT_MAX, "\n\t¬ведите индекс граничного услови€:\n-> "));
+                    _i = static_cast<unsigned>(getDouble(0, DBL_MAX, "\n\t¬ведите значение граничного услови€:\n-> "));
+                }
+                else if (_k == 3) 
+                {
+                    _0 = static_cast<unsigned>(getDouble(0, INT_MAX, "\n\t¬ведите первое граничное условие:\n-> "));
+                    _i = static_cast<unsigned>(getDouble(0, DBL_MAX, "\n\t¬ведите второе граничное условие:\n-> "));
+                }
                 _t = getSymbol({ 'y', 'n' }, "\n\t»звестно ли аналитическое выражение дл€ функции f(x)?"
                     "\n\ty Ц да;"
                     "\n\tn Ц нет\n-> ");
@@ -168,7 +178,7 @@ namespace luMath
                 _y0 = Vector<T>(_n + 1, false);
                 for (unsigned i = 0; i <= _n; i++)
                     std::cin >> _y0[i];
-                std::cin >> _m;
+                std::cin >> _0 >> _i >>_m;
                 _res_x = Vector<T>(_m + 1, false);
                 for (unsigned i = 0; i <= _m; i++)
                     std::cin >> _res_x[i];
@@ -205,7 +215,7 @@ namespace luMath
         char* getOrigAnalytic() const { return _f; }
 
 
-        Vector<Polynomial<T>> getSplines(unsigned ord)
+        const Vector<Polynomial<T>>& getSplines(unsigned ord)
         {
             _splines = Vector<Polynomial<T>>(_n);
             switch (ord)
@@ -215,16 +225,39 @@ namespace luMath
                     _splines[i] = _y0[i] + (_y0[i + 1] - _y0[i]) / (_x0[i + 1] - _x0[i]) * Polynomial<T>({ -(T)_x0[i], 1 });
                 break;
             case 2: // параболические сплайны
-                //for (int i = 0; i <= (int)_n; i++)
-                    //SplineSecondOrd(Splines[i]);
+            {   
+                Vector<T> b(_n + 1);
+                if (_0 == 0)
+                {
+                    b[0] = _i;
+                    for (int i = 0; i < (int)_n; i++)
+                        b[i + 1] = 2 * (_y0[i + 1] - _y0[i]) / (_x0[i + 1] - _x0[i]) - b[i];
+                }
+                else
+                {
+                    b[_n] = _i;
+                    for (int i = _n - 1; i >= 0; i--)
+                        b[i] = 2 * (_y0[i + 1] - _y0[i]) / (_x0[i + 1] - _x0[i]) - b[i + 1];
+                }
+
+                for (int i = 0; i < (int)_n; i++)
+                {
+                    _splines[i] = _y0[i]
+                        + b[i] * Polynomial<T>({ -(T)_x0[i], 1 })
+                        + ((b[i + 1] - b[i])
+                            / (2 * (_x0[i + 1] - _x0[i]))
+                            * Polynomial<T>({ -(T)_x0[i], 1 }) * Polynomial<T>({ -(T)_x0[i], 1 }));
+                    std::cout << "\nSpline #" << i << ":\t" << _splines[i];
+                }
                 break;
+            }
             case 3: // кубические сплайны
                 //for (int i = 0; i <= (int)_n; i++)
                     //SplineThirdOrd(Splines[i]);
                 break;
             default: throw std::logic_error("Ќепредвиденный пор€док сплайнов");
             }
-            return  Splines;
+            return  _splines;
         }
 
         private:
